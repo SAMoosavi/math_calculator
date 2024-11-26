@@ -1,12 +1,12 @@
 mod addition;
 mod subtraction;
 
-use std::char;
+use std::{char, thread};
 
 use addition::Addition;
 use subtraction::Subtraction;
 
-pub trait Element {
+pub trait Element: Send {
     fn new(left: Types, right: Types) -> Self
     where
         Self: Sized;
@@ -114,7 +114,8 @@ impl Expiration {
         }
     }
 
-    pub fn pars(&self) -> Result<Types, String> {
+    pub fn pars(&self, mut i: u8) -> Result<Types, String> {
+        i += 1;
         let mut ex = &self.ex[..];
         let mut left = String::new();
         let mut right = String::new();
@@ -162,13 +163,22 @@ impl Expiration {
             }
         }
 
-        println!("{left},{operator},{right}");
         if operator.is_empty() {
             if right[0..1].chars().next().unwrap().is_ascii_digit() {
                 Ok(Types::from_val(right.parse().unwrap()))
-            } else { Ok(Types::from_var(right)) }
+            } else {
+                Ok(Types::from_var(right))
+            }
         } else {
-            Ok(Types::from_operator(Self::new(&left).pars()?, operator, Self::new(&right).pars()?))
+            if 1 <= i && i <= 2 {
+                let h1 = thread::spawn(move || Self::new(&left).pars(i));
+                let h2 = thread::spawn(move || Self::new(&right).pars(i));
+                let l = h1.join().unwrap();
+                let r = h2.join().unwrap();
+                Ok(Types::from_operator(l?, operator, r?))
+            } else {
+                Ok(Types::from_operator(Self::new(&left).pars(i)?, operator, Self::new(&right).pars(i)?))
+            }
         }
     }
 
