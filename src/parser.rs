@@ -1,34 +1,66 @@
 mod addition;
 mod subtraction;
 
-use std::{char, thread, time::Instant};
-use std::fmt::Debug;
+mod power;
+
+mod division;
+mod multiplication;
+
 use addition::Addition;
+use division::Division;
+use multiplication::Multiplication;
+use power::Power;
+use std::char;
+use std::fmt::{Display, Formatter};
+use std::time::Instant;
 use subtraction::Subtraction;
 
-pub trait Element: Debug {
+pub trait Element: Display {
     fn new(left: Types, right: Types) -> Self
     where
         Self: Sized;
-
-    fn to_string(&self) -> String;
 }
 
-#[derive(Debug)]
 struct Var {
     var: String,
 }
 
-#[derive(Debug)]
+impl Display for Var {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "'{}'", self.var)
+    }
+}
+
 struct Val {
     val: i32,
 }
 
-#[derive(Debug)]
+impl Display for Val {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.val)
+    }
+}
+
 pub enum Types {
     Var(Var),
     Val(Val),
     Element(Box<dyn Element>),
+}
+
+impl Display for Types {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Types::Var(x) => {
+                write!(f, "{}", x)
+            }
+            Types::Val(x) => {
+                write!(f, "{}", x)
+            }
+            Types::Element(x) => {
+                write!(f, "{}", x)
+            }
+        }
+    }
 }
 
 impl Types {
@@ -36,14 +68,17 @@ impl Types {
         let element: Box<dyn Element> = match operator {
             "+" => Box::new(Addition::new(left, right)),
             "-" => Box::new(Subtraction::new(left, right)),
-            // "*" => Some(::new(left,right)),
-            // "+" => Some(Addition::new(left,right)),
-            _ => panic!("Unknown Element")
+            "*" => Box::new(Multiplication::new(left, right)),
+            "/" => Box::new(Division::new(left, right)),
+            "^" => Box::new(Power::new(left, right)),
+            _ => panic!("Unknown Element"),
         };
         Self::Element(element)
     }
 
-    pub fn from_var(var: String) -> Self { Self::Var(Var { var }) }
+    pub fn from_var(var: String) -> Self {
+        Self::Var(Var { var })
+    }
 
     pub fn from_val(val: i32) -> Self {
         Self::Val(Val { val })
@@ -115,7 +150,7 @@ impl ScopeMarker {
             ScopeMarker::CloseParenthesis
             | ScopeMarker::CloseCurlyBrace
             | ScopeMarker::CloseBracket => true,
-            _ => false
+            _ => false,
         }
     }
 
@@ -124,7 +159,7 @@ impl ScopeMarker {
             ScopeMarker::OpenParenthesis
             | ScopeMarker::OpenCurlyBrace
             | ScopeMarker::OpenBracket => true,
-            _ => false
+            _ => false,
         }
     }
 }
@@ -135,24 +170,52 @@ pub struct Expiration {
 
 impl Expiration {
     pub fn new(ex: String) -> Self {
-        Self {
-            ex,
-        }
+        Self { ex }
     }
 
     pub fn pars(&self) -> Result<Types, String> {
         let mut stack = Vec::new();
-        let mut operator_stack = Vec::new();
+        let mut operator_stack: Vec<String> = Vec::new();
 
+let s = Instant::now();
+        let mut  a = 0;
         for x in self.ex.split_whitespace() {
+            a += 1;
             match x {
-                x if x.chars().all(|x1| x1.is_ascii_digit()) => {
-                    stack.push(Types::from_val(x.parse().unwrap()));
-                }
                 "-" | "+" => {
+                    while (|| {
+                        if let Some(x) = operator_stack.last() {
+                            match &x[..] {
+                                "*" | "-" | "^" => true,
+                                _ => false,
+                            }
+                        } else {
+                            false
+                        }
+                    })() {
+                        let right = stack.pop().unwrap();
+                        let operator = &operator_stack.pop().unwrap();
+                        let left = stack.pop().unwrap();
+                        stack.push(Types::from_operator(left, operator, right));
+                    }
                     operator_stack.push(x.to_string());
                 }
                 "*" | "/" => {
+                    while (|| {
+                        if let Some(x) = operator_stack.last() {
+                            match &x[..] {
+                                "^" => true,
+                                _ => false,
+                            }
+                        } else {
+                            false
+                        }
+                    })() {
+                        let right = stack.pop().unwrap();
+                        let operator = &operator_stack.pop().unwrap();
+                        let left = stack.pop().unwrap();
+                        stack.push(Types::from_operator(left, operator, right));
+                    }
                     operator_stack.push(x.to_string());
                 }
                 "^" => {
@@ -169,8 +232,12 @@ impl Expiration {
                                 let len = stack.len();
                                 stack[len - 1] = lase_element;
                                 false
-                            } else { true }
-                        } else { false }
+                            } else {
+                                true
+                            }
+                        } else {
+                            false
+                        }
                     })() {
                         let right = stack.pop().unwrap();
                         let operator = &operator_stack.pop().unwrap();
@@ -182,7 +249,10 @@ impl Expiration {
                     stack.push(Types::from_var(x.to_string()));
                     operator_stack.push(x.to_string());
                 }
-                _ => { stack.push(Types::from_var(x.to_string())); }
+                _ => match x.parse() {
+                    Ok(num) => stack.push(Types::from_val(num)),
+                    Err(_) => stack.push(Types::from_var(x.to_string())),
+                },
             }
         }
 
@@ -192,7 +262,8 @@ impl Expiration {
             let left = stack.pop().unwrap();
             stack.push(Types::from_operator(left, operator, right));
         }
+let e = Instant::now();
 
-        Err(format!("Parsing error: {:?}", stack[0]))
+        Err(format!("Parsing error: {} {:?}",a ,  e - s))
     }
 }

@@ -1,4 +1,4 @@
-use std::fmt::{Debug, Formatter};
+use std::fmt::{Debug, Display, Formatter};
 use crate::parser::{Element, Types};
 
 pub struct Subtraction {
@@ -6,9 +6,9 @@ pub struct Subtraction {
     right: Types,
 }
 
-impl Debug for Subtraction {
+impl Display for Subtraction {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        self.to_string().fmt(f)
+        write!(f, "({} - {})", self.left, self.right)
     }
 }
 
@@ -18,19 +18,4 @@ impl Element for Subtraction {
         Self { left, right }
     }
 
-    fn to_string(&self) -> String {
-        let left = match &self.left {
-            Types::Var(x) => {x.var.clone()}
-            Types::Val(x) => {x.val.to_string()}
-            Types::Element(x) => {x.to_string()}
-        };
-
-        let right = match &self.right {
-            Types::Var(x) => {x.var.clone()}
-            Types::Val(x) => {x.val.to_string()}
-            Types::Element(x) => {x.to_string()}
-        };
-
-        format!("({} - {})", left, right)
-    }
 }
