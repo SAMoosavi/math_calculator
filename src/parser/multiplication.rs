@@ -1,5 +1,5 @@
-use std::fmt::{Debug, Display, Formatter};
 use crate::parser::{Element, Types};
+use std::fmt::{Display, Formatter};
 
 pub struct Multiplication {
     left: Types,
@@ -19,5 +19,4 @@ impl Element for Multiplication {
     {
         Self { left, right }
     }
-
 }

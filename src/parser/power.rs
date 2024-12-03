@@ -1,5 +1,5 @@
-use std::fmt::{Debug, Display, Formatter};
 use crate::parser::{Element, Types};
+use std::fmt::{Display, Formatter};
 
 pub struct Power {
     left: Types,
@@ -19,5 +19,4 @@ impl Element for Power {
     {
         Self { left, right }
     }
-
 }

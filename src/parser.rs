@@ -1,19 +1,20 @@
 mod addition;
-mod subtraction;
-
-mod power;
-
 mod division;
 mod multiplication;
+mod power;
+mod subtraction;
 
 use addition::Addition;
 use division::Division;
 use multiplication::Multiplication;
 use power::Power;
-use std::char;
-use std::fmt::{Display, Formatter};
-use std::time::Instant;
 use subtraction::Subtraction;
+
+use std::{
+    char,
+    fmt::{Display, Formatter},
+    time::Instant,
+};
 
 pub trait Element: Display {
     fn new(left: Types, right: Types) -> Self
@@ -177,8 +178,8 @@ impl Expiration {
         let mut stack = Vec::new();
         let mut operator_stack: Vec<String> = Vec::new();
 
-let s = Instant::now();
-        let mut  a = 0;
+        let s = Instant::now();
+        let mut a = 0;
         for x in self.ex.split_whitespace() {
             a += 1;
             match x {
@@ -262,8 +263,8 @@ let s = Instant::now();
             let left = stack.pop().unwrap();
             stack.push(Types::from_operator(left, operator, right));
         }
-let e = Instant::now();
+        let e = Instant::now();
 
-        Err(format!("Parsing error: {} {:?}",a ,  e - s))
+        Err(format!("Parsing error: {} {:?}", a, e - s))
     }
 }

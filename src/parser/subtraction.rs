@@ -1,5 +1,5 @@
-use std::fmt::{Debug, Display, Formatter};
 use crate::parser::{Element, Types};
+use std::fmt::{Display, Formatter};
 
 pub struct Subtraction {
     left: Types,
@@ -13,9 +13,7 @@ impl Display for Subtraction {
 }
 
 impl Element for Subtraction {
-    fn new(left: Types, right: Types) -> Self
-    {
+    fn new(left: Types, right: Types) -> Self {
         Self { left, right }
     }
-
 }
