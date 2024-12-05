@@ -1,9 +1,13 @@
 use crate::parser::{Element, Types};
-use std::fmt::{Display, Formatter};
+use std::{
+    cmp::max,
+    fmt::{Display, Formatter},
+};
 
 pub struct Subtraction {
     left: Types,
     right: Types,
+    depth: u32,
 }
 
 impl Display for Subtraction {
@@ -13,7 +17,23 @@ impl Display for Subtraction {
 }
 
 impl Element for Subtraction {
-    fn new(left: Types, right: Types) -> Self {
-        Self { left, right }
+    fn new(left: Types, right: Types) -> Self
+    where
+        Self: Sized,
+    {
+        fn calculate_depth(types: &Types) -> u32 {
+            match types {
+                Types::Element(element) => element.get_depth(),
+                _ => 0,
+            }
+        }
+
+        let depth = max(calculate_depth(&left), calculate_depth(&right)) + 1;
+
+        Self { left, right, depth }
+    }
+
+    fn get_depth(&self) -> u32 {
+        self.depth
     }
 }

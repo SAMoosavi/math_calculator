@@ -20,6 +20,8 @@ pub trait Element: Display {
     fn new(left: Types, right: Types) -> Self
     where
         Self: Sized;
+
+    fn get_depth(&self) -> u32;
 }
 
 struct Var {
@@ -174,48 +176,49 @@ impl Expiration {
         Self { ex }
     }
 
+    fn create_operator(stack: &mut Vec<Types>, operator_stack: &mut Vec<String>) {
+        let right = stack.pop().unwrap();
+        let operator = &operator_stack.pop().unwrap();
+        let left = stack.pop().unwrap();
+        stack.push(Types::from_operator(left, operator, right));
+    }
+
     pub fn pars(&self) -> Result<Types, String> {
         let mut stack = Vec::new();
         let mut operator_stack: Vec<String> = Vec::new();
 
-        let s = Instant::now();
-        let mut a = 0;
         for x in self.ex.split_whitespace() {
-            a += 1;
             match x {
                 "-" | "+" => {
-                    while (|| {
+                    let check_precedence = |operator_stack: &Vec<String>| {
                         if let Some(x) = operator_stack.last() {
-                            match &x[..] {
+                            match x.as_str() {
                                 "*" | "-" | "^" => true,
                                 _ => false,
                             }
                         } else {
                             false
                         }
-                    })() {
-                        let right = stack.pop().unwrap();
-                        let operator = &operator_stack.pop().unwrap();
-                        let left = stack.pop().unwrap();
-                        stack.push(Types::from_operator(left, operator, right));
+                    };
+
+                    while check_precedence(&operator_stack) {
+                        Self::create_operator(&mut stack, &mut operator_stack);
                     }
                     operator_stack.push(x.to_string());
                 }
                 "*" | "/" => {
-                    while (|| {
+                    let check_precedence = |operator_stack: &Vec<String>| {
                         if let Some(x) = operator_stack.last() {
-                            match &x[..] {
+                            match x.as_str() {
                                 "^" => true,
                                 _ => false,
                             }
                         } else {
                             false
                         }
-                    })() {
-                        let right = stack.pop().unwrap();
-                        let operator = &operator_stack.pop().unwrap();
-                        let left = stack.pop().unwrap();
-                        stack.push(Types::from_operator(left, operator, right));
+                    };
+                    while check_precedence(&operator_stack) {
+                        Self::create_operator(&mut stack, &mut operator_stack);
                     }
                     operator_stack.push(x.to_string());
                 }
@@ -224,7 +227,8 @@ impl Expiration {
                 }
                 x if ScopeMarker::is_close(&ScopeMarker::from_str(x)) => {
                     let scope = ScopeMarker::from_str(x);
-                    while (|| {
+
+                    let check_open = |stack: &mut Vec<Types>, operator_stack: &mut Vec<String>| {
                         if let Some(x) = operator_stack.last() {
                             let current_scope = ScopeMarker::from_str(x);
                             if scope.same_scope(&current_scope) {
@@ -239,11 +243,10 @@ impl Expiration {
                         } else {
                             false
                         }
-                    })() {
-                        let right = stack.pop().unwrap();
-                        let operator = &operator_stack.pop().unwrap();
-                        let left = stack.pop().unwrap();
-                        stack.push(Types::from_operator(left, operator, right));
+                    };
+
+                    while check_open(&mut stack, &mut operator_stack) {
+                        Self::create_operator(&mut stack, &mut operator_stack);
                     }
                 }
                 x if ScopeMarker::is_open(&ScopeMarker::from_str(x)) => {
@@ -258,13 +261,9 @@ impl Expiration {
         }
 
         while stack.len() != 1 {
-            let right = stack.pop().unwrap();
-            let operator = &operator_stack.pop().unwrap();
-            let left = stack.pop().unwrap();
-            stack.push(Types::from_operator(left, operator, right));
+            Self::create_operator(&mut stack, &mut operator_stack);
         }
-        let e = Instant::now();
 
-        Err(format!("Parsing error: {} {:?}", a, e - s))
+        Ok(stack.pop().unwrap())
     }
 }
