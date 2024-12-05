@@ -10,11 +10,7 @@ use multiplication::Multiplication;
 use power::Power;
 use subtraction::Subtraction;
 
-use std::{
-    char,
-    fmt::{Display, Formatter},
-    time::Instant,
-};
+use std::fmt::{Display, Formatter};
 
 pub trait Element: Display {
     fn new(left: Types, right: Types) -> Self
@@ -100,18 +96,6 @@ enum ScopeMarker {
 }
 
 impl ScopeMarker {
-    pub fn from_char(c: char) -> Self {
-        match c {
-            '(' => Self::OpenParenthesis,
-            ')' => Self::CloseParenthesis,
-            '{' => Self::OpenCurlyBrace,
-            '}' => Self::CloseCurlyBrace,
-            '[' => Self::OpenBracket,
-            ']' => Self::CloseBracket,
-            _ => Self::Unknown,
-        }
-    }
-
     pub fn from_str(c: &str) -> Self {
         match c {
             "(" => Self::OpenParenthesis,
@@ -121,18 +105,6 @@ impl ScopeMarker {
             "[" => Self::OpenBracket,
             "]" => Self::CloseBracket,
             _ => Self::Unknown,
-        }
-    }
-
-    pub fn to_char(&self) -> char {
-        match self {
-            Self::OpenParenthesis => '(',
-            Self::CloseParenthesis => ')',
-            Self::OpenCurlyBrace => '{',
-            Self::CloseCurlyBrace => '}',
-            Self::OpenBracket => '[',
-            Self::CloseBracket => ']',
-            Self::Unknown => '\0',
         }
     }
 
@@ -149,21 +121,19 @@ impl ScopeMarker {
     }
 
     pub fn is_close(&self) -> bool {
-        match self {
+        matches!(
+            self,
             ScopeMarker::CloseParenthesis
-            | ScopeMarker::CloseCurlyBrace
-            | ScopeMarker::CloseBracket => true,
-            _ => false,
-        }
+                | ScopeMarker::CloseCurlyBrace
+                | ScopeMarker::CloseBracket
+        )
     }
 
     pub fn is_open(&self) -> bool {
-        match self {
-            ScopeMarker::OpenParenthesis
-            | ScopeMarker::OpenCurlyBrace
-            | ScopeMarker::OpenBracket => true,
-            _ => false,
-        }
+        matches!(
+            self,
+            ScopeMarker::OpenParenthesis | ScopeMarker::OpenCurlyBrace | ScopeMarker::OpenBracket
+        )
     }
 }
 
@@ -192,10 +162,7 @@ impl Expiration {
                 "-" | "+" => {
                     let check_precedence = |operator_stack: &Vec<String>| {
                         if let Some(x) = operator_stack.last() {
-                            match x.as_str() {
-                                "*" | "-" | "^" => true,
-                                _ => false,
-                            }
+                            matches!(x.as_str(), "*" | "-" | "^")
                         } else {
                             false
                         }
@@ -209,10 +176,7 @@ impl Expiration {
                 "*" | "/" => {
                     let check_precedence = |operator_stack: &Vec<String>| {
                         if let Some(x) = operator_stack.last() {
-                            match x.as_str() {
-                                "^" => true,
-                                _ => false,
-                            }
+                            matches!(x.as_str(), "^")
                         } else {
                             false
                         }
