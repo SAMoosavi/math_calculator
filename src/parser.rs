@@ -1,24 +1,4 @@
-mod addition;
-mod division;
-mod multiplication;
-mod power;
-mod subtraction;
-
-use addition::Addition;
-use division::Division;
-use multiplication::Multiplication;
-use power::Power;
-use subtraction::Subtraction;
-
-use std::fmt::{Display, Formatter};
-
-pub trait Element: Display {
-    fn new(left: Types, right: Types) -> Self
-    where
-        Self: Sized;
-
-    fn get_depth(&self) -> u32;
-}
+use std::{fmt::{Display, Formatter},cmp::max};
 
 struct Var {
     var: String,
@@ -40,10 +20,20 @@ impl Display for Val {
     }
 }
 
+struct BinaryOperator {
+    left: Box<Types>,
+    right: Box<Types>,
+    depth: u32,
+}
+
 pub enum Types {
     Var(Var),
     Val(Val),
-    Element(Box<dyn Element>),
+    Add(BinaryOperator),
+    Subtract(BinaryOperator),
+    Multiple(BinaryOperator),
+    Division(BinaryOperator),
+    Power(BinaryOperator),
 }
 
 impl Display for Types {
@@ -55,8 +45,20 @@ impl Display for Types {
             Types::Val(x) => {
                 write!(f, "{}", x)
             }
-            Types::Element(x) => {
-                write!(f, "{}", x)
+            Types::Add(x) => {
+                write!(f, "({} + {})", x.left, x.right)
+            }
+            Types::Subtract(x) => {
+                write!(f,"({} - {})",x.left, x.right)
+            }
+            Types::Multiple(x) => {
+                write!(f,"({} * {})",x.left, x.right)
+            }
+            Types::Division(x) => {
+                write!(f,"({} / {})",x.left, x.right)
+            }
+            Types::Power(x) => {
+                write!(f,"({} ^ {})",x.left, x.right)
             }
         }
     }
@@ -64,15 +66,22 @@ impl Display for Types {
 
 impl Types {
     pub fn from_operator(left: Types, operator: &str, right: Types) -> Self {
-        let element: Box<dyn Element> = match operator {
-            "+" => Box::new(Addition::new(left, right)),
-            "-" => Box::new(Subtraction::new(left, right)),
-            "*" => Box::new(Multiplication::new(left, right)),
-            "/" => Box::new(Division::new(left, right)),
-            "^" => Box::new(Power::new(left, right)),
-            _ => panic!("Unknown Element"),
+        let depth = max(left.get_depth(), right.get_depth()) + 1;
+        let left = Box::new(left);
+        let right = Box::new(right);
+        let binary_operator = BinaryOperator {
+            left,
+            right,
+            depth,
         };
-        Self::Element(element)
+        match operator {
+            "+" => Types::Add(binary_operator),
+            "-" => Types::Subtract(binary_operator),
+            "*" => Types::Multiple(binary_operator),
+            "/" => Types::Division(binary_operator),
+            "^" => Types::Power(binary_operator),
+            _ => panic!("Unknown Element"),
+        }
     }
 
     pub fn from_var(var: String) -> Self {
@@ -81,6 +90,18 @@ impl Types {
 
     pub fn from_val(val: i32) -> Self {
         Self::Val(Val { val })
+    }
+
+    fn get_depth(&self) -> u32 {
+        match self {
+            Types::Val(_) => {0},
+            Types::Var(_) => {0},
+            Types::Add(x) => x.depth,
+            Types::Subtract(x) => x.depth,
+            Types::Multiple(x) => x.depth,
+            Types::Division(x) => x.depth,
+            Types::Power(x) => x.depth,
+        }
     }
 }
 
