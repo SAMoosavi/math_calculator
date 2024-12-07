@@ -7,9 +7,11 @@ fn main() {
     for _ in 1..22 {
         a = format!("( {a} ) + ( {a} )")
     }
-    let ex = Expiration::new(a);
-    match ex.pars() {
-        Ok(_) => {}
+    let ex = Expiration::new(&a);
+    match ex {
+        Ok(x) => {
+            println!("{}", x);
+        }
         Err(x) => {
             println!("{x}")
         }
