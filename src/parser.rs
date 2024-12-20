@@ -21,7 +21,7 @@ pub struct Expiration<'a> {
 
 impl<'a> Expiration<'a> {
     pub fn new(input: &'a str) -> Result<Self, String> {
-        match Self::parse().parse(&input).into_result() {
+        match Self::parse().parse(input).into_result() {
             Ok(ast) => Ok(Self { ast }),
             Err(parse_errs) => {
                 let mut er = String::new();
@@ -67,7 +67,7 @@ impl<'a> Expiration<'a> {
                 |lhs, (op, rhs)| op(Box::new(lhs), Box::new(rhs)),
             );
 
-            let sum = product.clone().foldl(
+            product.clone().foldl(
                 choice((
                     op('+').to(Expr::Add as fn(_, _) -> _),
                     op('-').to(Expr::Sub as fn(_, _) -> _),
@@ -75,9 +75,7 @@ impl<'a> Expiration<'a> {
                 .then(product)
                 .repeated(),
                 |lhs, (op, rhs)| op(Box::new(lhs), Box::new(rhs)),
-            );
-
-            sum
+            )
         })
     }
 
@@ -89,11 +87,11 @@ impl<'a> Expiration<'a> {
         match expr {
             Expr::Num(x) => Ok(*x),
             Expr::Neg(a) => Ok(-Self::eval(a, vars)?),
-            Expr::Add(a, b) => Self::binary_operator(&a, &b, vars, |x, y| x + y),
-            Expr::Sub(a, b) => Self::binary_operator(&a, &b, vars, |x, y| x - y),
-            Expr::Mul(a, b) => Self::binary_operator(&a, &b, vars, |x, y| x * y),
-            Expr::Div(a, b) => Self::binary_operator(&a, &b, vars, |x, y| x / y),
-            Expr::Pow(a, b) => Self::binary_operator(&a, &b, vars, |x, y| x.powf(y)),
+            Expr::Add(a, b) => Self::binary_operator(a, b, vars, |x, y| x + y),
+            Expr::Sub(a, b) => Self::binary_operator(a, b, vars, |x, y| x - y),
+            Expr::Mul(a, b) => Self::binary_operator(a, b, vars, |x, y| x * y),
+            Expr::Div(a, b) => Self::binary_operator(a, b, vars, |x, y| x / y),
+            Expr::Pow(a, b) => Self::binary_operator(a, b, vars, |x, y| x.powf(y)),
             Expr::Var(name) => match vars.get(name) {
                 Some(val) => Ok(*val),
                 None => Err(format!("Cannot find variable `{}` in scope", name)),
@@ -108,7 +106,7 @@ impl<'a> Expiration<'a> {
         f: fn(f64, f64) -> f64,
     ) -> Result<f64, String> {
         let (left_result, right_result) =
-            rayon::join(|| Self::eval(l, &vars), || Self::eval(r, &vars));
+            rayon::join(|| Self::eval(l, vars), || Self::eval(r, vars));
 
         let left = left_result?;
         let right = right_result?;
