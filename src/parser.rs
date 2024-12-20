@@ -1,4 +1,4 @@
-use std::sync::{Arc, Mutex};
+use std::collections::HashMap;
 
 use chumsky::prelude::*;
 
@@ -13,12 +13,6 @@ enum Expr<'a> {
     Mul(Box<Expr<'a>>, Box<Expr<'a>>),
     Div(Box<Expr<'a>>, Box<Expr<'a>>),
     Pow(Box<Expr<'a>>, Box<Expr<'a>>),
-
-    Let {
-        name: &'a str,
-        rhs: Box<Expr<'a>>,
-        then: Box<Expr<'a>>,
-    },
 }
 
 pub struct Expiration<'a> {
@@ -42,7 +36,7 @@ impl<'a> Expiration<'a> {
     fn parse() -> impl Parser<'a, &'a str, Expr<'a>> {
         let ident = text::ascii::ident().padded();
 
-        let expr = recursive(|expr| {
+        recursive(|expr| {
             let int = text::int(10).map(|s: &str| Expr::Num(s.parse().unwrap()));
 
             let atom = int
@@ -84,41 +78,21 @@ impl<'a> Expiration<'a> {
             );
 
             sum
-        });
-
-        let decl = recursive(|decl| {
-            let r#let = text::ascii::keyword("let")
-                .ignore_then(ident)
-                .then_ignore(just('='))
-                .then(expr.clone())
-                .then_ignore(just(';'))
-                .then(decl.clone())
-                .map(|((name, rhs), then)| Expr::Let {
-                    name,
-                    rhs: Box::new(rhs),
-                    then: Box::new(then),
-                });
-
-            r#let.or(expr).padded()
-        });
-
-        decl
+        })
     }
 
-    pub fn calculate(&'a self) -> Result<f64, String> {
-        Self::eval(&self.ast, Arc::new(Mutex::new(Vec::new())))
+    pub fn calculate(&'a self, vars: &HashMap<&'a str, f64>) -> Result<f64, String> {
+        Self::eval(&self.ast, vars)
     }
 
     fn binary_operator(
         l: &'a Expr<'a>,
         r: &'a Expr<'a>,
-        vars: Arc<Mutex<Vec<(&'a str, f64)>>>,
+        vars: &HashMap<&'a str, f64>,
         f: fn(f64, f64) -> f64,
     ) -> Result<f64, String> {
-        let (left_result, right_result) = rayon::join(
-            || Self::eval(l, vars.clone()),
-            || Self::eval(r, vars.clone()),
-        );
+        let (left_result, right_result) =
+            rayon::join(|| Self::eval(l, &vars), || Self::eval(r, &vars));
 
         let left = left_result?;
         let right = right_result?;
@@ -126,7 +100,7 @@ impl<'a> Expiration<'a> {
         Ok(f(left, right))
     }
 
-    fn eval(expr: &'a Expr<'a>, vars: Arc<Mutex<Vec<(&'a str, f64)>>>) -> Result<f64, String> {
+    fn eval(expr: &'a Expr<'a>, vars: &HashMap<&'a str, f64>) -> Result<f64, String> {
         match expr {
             Expr::Num(x) => Ok(*x),
             Expr::Neg(a) => Ok(-Self::eval(a, vars)?),
@@ -135,30 +109,10 @@ impl<'a> Expiration<'a> {
             Expr::Mul(a, b) => Self::binary_operator(&a, &b, vars, |x, y| x * y),
             Expr::Div(a, b) => Self::binary_operator(&a, &b, vars, |x, y| x / y),
             Expr::Pow(a, b) => Self::binary_operator(&a, &b, vars, |x, y| x.powf(y)),
-            Expr::Var(name) => {
-                let vars = vars.lock().unwrap();
-                if let Some((_, val)) = vars.iter().rev().find(|(var, _)| var == name) {
-                    Ok(*val)
-                } else {
-                    Err(format!("Cannot find variable `{}` in scope", name))
-                }
-            }
-            Expr::Let { name, rhs, then } => {
-                let rhs_value = Self::eval(rhs, vars.clone())?;
-
-                {
-                    let mut vars = vars.lock().unwrap();
-                    vars.push((*name, rhs_value));
-                }
-                let output = Self::eval(then, vars.clone());
-
-                {
-                    let mut vars = vars.lock().unwrap();
-                    vars.pop();
-                }
-
-                output
-            }
+            Expr::Var(name) => match vars.get(name) {
+                Some(val) => Ok(*val),
+                None => Err(format!("Cannot find variable `{}` in scope", name)),
+            },
         }
     }
 }

@@ -1,17 +1,18 @@
 mod parser;
 
+use std::collections::HashMap;
+
 use parser::Expiration;
 
 fn main() {
-    let mut a = String::from("- 3 + x * 2 + y ^ (x * 3) + y / 2");
+    let mut src = String::from("- 3 + x * 2 + y ^ (x * 3) + y / 2");
 
-    (1..20)
+    (1..5)
         .into_iter()
-        .for_each(|_| a = format!("({a}) + ({a})"));
+        .for_each(|_| src = format!("({src}) + ({src})"));
 
-    let src = format!("let x = 10; let y = 20; {a}");
     match Expiration::new(&src) {
-        Ok(exp) => match exp.calculate() {
+        Ok(exp) => match exp.calculate(&HashMap::from([("x", 10 as f64), ("y", 20 as f64)])) {
             Ok(output) => {
                 println!("answer: {}", output)
             }
