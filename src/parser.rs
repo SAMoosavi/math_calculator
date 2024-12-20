@@ -51,7 +51,7 @@ impl<'a> Expiration<'a> {
                 .foldr(atom, |_op, rhs| Expr::Neg(Box::new(rhs)));
 
             let power = unary.clone().foldl(
-                choice((op('^').to(Expr::Mul as fn(_, _) -> _),))
+                choice((op('^').to(Expr::Pow as fn(_, _) -> _),))
                     .then(unary)
                     .repeated(),
                 |lhs, (op, rhs)| op(Box::new(lhs), Box::new(rhs)),
