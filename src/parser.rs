@@ -85,21 +85,6 @@ impl<'a> Expiration<'a> {
         Self::eval(&self.ast, vars)
     }
 
-    fn binary_operator(
-        l: &'a Expr<'a>,
-        r: &'a Expr<'a>,
-        vars: &HashMap<&'a str, f64>,
-        f: fn(f64, f64) -> f64,
-    ) -> Result<f64, String> {
-        let (left_result, right_result) =
-            rayon::join(|| Self::eval(l, &vars), || Self::eval(r, &vars));
-
-        let left = left_result?;
-        let right = right_result?;
-
-        Ok(f(left, right))
-    }
-
     fn eval(expr: &'a Expr<'a>, vars: &HashMap<&'a str, f64>) -> Result<f64, String> {
         match expr {
             Expr::Num(x) => Ok(*x),
@@ -114,5 +99,20 @@ impl<'a> Expiration<'a> {
                 None => Err(format!("Cannot find variable `{}` in scope", name)),
             },
         }
+    }
+
+    fn binary_operator(
+        l: &'a Expr<'a>,
+        r: &'a Expr<'a>,
+        vars: &HashMap<&'a str, f64>,
+        f: fn(f64, f64) -> f64,
+    ) -> Result<f64, String> {
+        let (left_result, right_result) =
+            rayon::join(|| Self::eval(l, &vars), || Self::eval(r, &vars));
+
+        let left = left_result?;
+        let right = right_result?;
+
+        Ok(f(left, right))
     }
 }
